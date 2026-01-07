@@ -8,8 +8,6 @@ select
     account_id,
     loan_id,
     origination_date,
-    loan_product,
-    exposure_amount,
     batch_date,
     ingestion_ts
 from {{ ref('tbl_loan') }}
