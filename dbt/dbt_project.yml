@@ -31,5 +31,4 @@ models:
         +tags: ['curated', 'views']
 
 vars:
-  batch_date: '2025-01-31'
-
+  batch_date: "{{ run_started_at.strftime('%Y-%m-%d') }}"

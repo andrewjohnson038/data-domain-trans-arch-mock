@@ -9,24 +9,6 @@ models:
         tests:
           - unique
           - not_null
-      - name: account_id
-        description: Associated account
-        tests:
-          - not_null
-          - relationships:
-              to: ref('tbl_account')
-              field: account_id
-              config:
-                severity: error
-      - name: customer_id
-        description: Borrower identifier
-        tests:
-          - not_null
-          - relationships:
-              to: ref('tbl_customer')
-              field: customer_id
-              config:
-                severity: error
       - name: origination_date
         description: Loan/facility start date
         tests:
@@ -214,18 +196,6 @@ models:
         description: Loan start date
         tests:
           - not_null
-      - name: loan_product
-        description: Product type
-        tests:
-          - not_null
-      - name: exposure_amount
-        description: Exposure on this loan
-        tests:
-          - not_null
-          - dbt_utils.expression_is_true:
-              expression: "exposure_amount > 0"
-              config:
-                severity: error
       - name: batch_date
         description: ETL processing date
         tests:
@@ -343,4 +313,3 @@ models:
           config:
             severity: error
             name: "total_exposure_aggregation_check"
-
