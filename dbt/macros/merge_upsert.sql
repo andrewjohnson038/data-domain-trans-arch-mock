@@ -1,3 +1,5 @@
+# not being used but an example
+
 {% macro merge_upsert(target_table, source_query, unique_key, update_columns) %}
 
 merge into {{ target_table }} as target
@@ -23,4 +25,3 @@ when not matched then
   )
 
 {% endmacro %}
-
