@@ -1,0 +1,10 @@
+customer_id,customer_name,industry,country,region,batch_date,ingestion_ts
+CUST-001,Acme Corp,Logistics,US,NY,2025-01-31,2025-01-31 10:25:00
+CUST-002,Bright Retail,Retail,US,TX,2025-01-31,2025-01-31 10:25:00
+CUST-003,SteelWorks Inc,Manufacturing,US,PA,2025-01-31,2025-01-31 10:25:00
+CUST-004,TechStart Innovations,Technology,US,CA,2025-01-31,2025-01-31 10:25:00
+CUST-005,GreenEnergy Solutions,Energy,US,TX,2025-01-31,2025-01-31 10:25:00
+CUST-006,HealthPlus Medical,Healthcare,US,FL,2025-01-31,2025-01-31 10:25:00
+CUST-007,BuildRight Construction,Construction,US,NY,2025-01-31,2025-01-31 10:25:00
+CUST-008,FoodChain Logistics,Logistics,US,IL,2025-01-31,2025-01-31 10:25:00
+

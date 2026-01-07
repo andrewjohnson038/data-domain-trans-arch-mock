@@ -1,0 +1,213 @@
+version: 2
+
+sources:
+  - name: raw_s3
+    database: lending_db
+    schema: raw_data
+    tables:
+      - name: loan_sys_a_transactions
+      - name: loan_sys_b_facilities
+      - name: customers
+
+models:
+  - name: sys_a_loan_trans
+    description: Standardized term loan transactions from System A
+    columns:
+      - name: loan_id
+        description: Unique loan identifier, format L-A-####
+        tests:
+          - unique
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "loan_id ~ '^L-A-\\d{4}$'"
+              config:
+                severity: error
+      - name: account_id
+        description: Account identifier, format ACC-###
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "account_id ~ '^ACC-\\d{3}$'"
+              config:
+                severity: error
+      - name: customer_id
+        description: Customer identifier, format CUST-###
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "customer_id ~ '^CUST-\\d{3}$'"
+              config:
+                severity: error
+      - name: origination_date
+        description: Date loan was originated
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "origination_date <= current_date"
+              config:
+                severity: error
+      - name: loan_product
+        description: Product type (TERM_LOAN)
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['TERM_LOAN']
+              config:
+                severity: error
+      - name: loan_amount
+        description: Total loan amount in USD
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "loan_amount > 0"
+              config:
+                severity: error
+      - name: interest_rate
+        description: Annual interest rate (decimal)
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "interest_rate >= 0.05 AND interest_rate <= 0.25"
+              config:
+                severity: error
+      - name: term_months
+        description: Loan term in months
+        tests:
+          - not_null
+          - accepted_values:
+              values: [12, 24, 36, 48, 60]
+              config:
+                severity: error
+      - name: batch_date
+        description: ETL batch processing date
+        tests:
+          - not_null
+      - name: ingestion_ts
+        description: Timestamp of data ingestion
+        tests:
+          - not_null
+
+  - name: sys_b_loan_trans
+    description: Standardized revolving credit facilities from System B
+    columns:
+      - name: loan_id
+        description: Unique facility identifier, format F-B-####
+        tests:
+          - unique
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "loan_id ~ '^F-B-\\d{4}$'"
+              config:
+                severity: error
+      - name: account_id
+        description: Account identifier, format ACC-###
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "account_id ~ '^ACC-\\d{3}$'"
+              config:
+                severity: error
+      - name: customer_id
+        description: Customer identifier, format CUST-###
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "customer_id ~ '^CUST-\\d{3}$'"
+              config:
+                severity: error
+      - name: origination_date
+        description: Date facility was opened
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "origination_date <= current_date"
+              config:
+                severity: error
+      - name: loan_product
+        description: Product type (REVOLVER)
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['REVOLVER']
+              config:
+                severity: error
+      - name: credit_limit
+        description: Maximum credit available
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "credit_limit > 0"
+              config:
+                severity: error
+      - name: utilized_amount
+        description: Currently drawn amount
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "utilized_amount >= 0 AND utilized_amount <= credit_limit"
+              config:
+                severity: error
+      - name: term_months
+        description: Loan term (NULL for revolving credit)
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "term_months IS NULL"
+              config:
+                severity: error
+      - name: interest_rate
+        description: Interest rate (NULL for variable rate products)
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "interest_rate IS NULL"
+              config:
+                severity: error
+      - name: batch_date
+        description: ETL batch processing date
+        tests:
+          - not_null
+      - name: ingestion_ts
+        description: Timestamp of data ingestion
+        tests:
+          - not_null
+
+  - name: customer_demographics
+    description: Standardized customer demographic information
+    columns:
+      - name: customer_id
+        description: Unique customer identifier
+        tests:
+          - unique
+          - not_null
+      - name: customer_name
+        description: Legal customer name
+        tests:
+          - not_null
+      - name: industry
+        description: Industry classification (NAICS-based)
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: country
+        description: ISO country code
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "LENGTH(country) = 2"
+              config:
+                severity: error
+      - name: region
+        description: US state code (if applicable)
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "(country = 'US' AND region IS NOT NULL) OR (country != 'US')"
+              config:
+                severity: warn
+      - name: batch_date
+        description: ETL batch processing date
+        tests:
+          - not_null
+      - name: ingestion_ts
+        description: Timestamp of data ingestion
+        tests:
+          - not_null

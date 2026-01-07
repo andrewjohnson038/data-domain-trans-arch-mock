@@ -1,0 +1,10 @@
+customer_id,customer_name,industry,country,state
+CUST-001,Acme Corp,Logistics,US,NY
+CUST-002,Bright Retail,Retail,US,TX
+CUST-003,SteelWorks Inc,Manufacturing,US,PA
+CUST-004,TechStart Innovations,Technology,US,CA
+CUST-005,GreenEnergy Solutions,Energy,US,TX
+CUST-006,HealthPlus Medical,Healthcare,US,FL
+CUST-007,BuildRight Construction,Construction,US,NY
+CUST-008,FoodChain Logistics,Logistics,US,IL
+

@@ -1,0 +1,35 @@
+name: 'lending_analytics'
+version: '1.0.0'
+config-version: 2
+
+profile: 'lending_analytics'
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+
+models:
+  lending_analytics:
+    structured:
+      +materialized: table
+      +schema: structured_zone
+      loans:
+        +tags: ['structured', 'loans']
+      customers:
+        +tags: ['structured', 'customers']
+    
+    curated:
+      +materialized: table
+      +schema: curated_zone
+      account:
+        +tags: ['curated', 'account']
+      loan:
+        +tags: ['curated', 'loan']
+      customer:
+        +tags: ['curated', 'customer']
+      views:
+        +materialized: view
+        +tags: ['curated', 'views']
+
+vars:
+  batch_date: '2025-01-31'
+

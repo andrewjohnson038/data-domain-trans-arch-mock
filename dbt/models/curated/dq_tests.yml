@@ -1,0 +1,346 @@
+version: 2
+
+models:
+  - name: tbl_loan
+    description: Canonical representation of all loans across source systems
+    columns:
+      - name: loan_id
+        description: Unique loan identifier
+        tests:
+          - unique
+          - not_null
+      - name: account_id
+        description: Associated account
+        tests:
+          - not_null
+          - relationships:
+              to: ref('tbl_account')
+              field: account_id
+              config:
+                severity: error
+      - name: customer_id
+        description: Borrower identifier
+        tests:
+          - not_null
+          - relationships:
+              to: ref('tbl_customer')
+              field: customer_id
+              config:
+                severity: error
+      - name: origination_date
+        description: Loan/facility start date
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "origination_date <= current_date"
+              config:
+                severity: error
+      - name: loan_product
+        description: Product type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['TERM_LOAN', 'REVOLVER']
+              config:
+                severity: error
+      - name: exposure_amount
+        description: Current exposure
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "exposure_amount > 0"
+              config:
+                severity: error
+      - name: interest_rate
+        description: Annual interest rate (NULL for variable rate)
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "(loan_product = 'TERM_LOAN' AND interest_rate IS NOT NULL) OR (loan_product = 'REVOLVER' AND interest_rate IS NULL)"
+              config:
+                severity: error
+      - name: term_months
+        description: Loan term (NULL for revolving credit)
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "(loan_product = 'TERM_LOAN' AND term_months IS NOT NULL) OR (loan_product = 'REVOLVER' AND term_months IS NULL)"
+              config:
+                severity: error
+      - name: batch_date
+        description: ETL processing date
+        tests:
+          - not_null
+      - name: ingestion_ts
+        description: Timestamp of data ingestion
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: |
+            (SELECT COUNT(*) FROM {{ ref('sys_a_loan_trans') }}) + 
+            (SELECT COUNT(*) FROM {{ ref('sys_b_loan_trans') }}) = 
+            (SELECT COUNT(*) FROM {{ this }})
+          config:
+            severity: error
+            name: "all_loans_present"
+
+  - name: tbl_account
+    description: Distinct accounts from all loan systems
+    columns:
+      - name: account_id
+        description: Unique account identifier
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Account owner
+        tests:
+          - not_null
+          - relationships:
+              to: ref('tbl_customer')
+              field: customer_id
+              config:
+                severity: error
+      - name: batch_date
+        description: ETL processing date
+        tests:
+          - not_null
+      - name: ingestion_ts
+        description: Timestamp of data ingestion
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: |
+            (SELECT COUNT(DISTINCT account_id) FROM {{ ref('tbl_loan') }}) = 
+            (SELECT COUNT(*) FROM {{ this }})
+          config:
+            severity: error
+            name: "accounts_match_loans"
+      - dbt_utils.expression_is_true:
+          expression: |
+            NOT EXISTS (
+              SELECT account_id 
+              FROM {{ this }} a
+              WHERE NOT EXISTS (
+                SELECT 1 FROM {{ ref('tbl_loan') }} l 
+                WHERE l.account_id = a.account_id
+              )
+            )
+          config:
+            severity: error
+            name: "all_accounts_have_loans"
+
+  - name: tbl_customer
+    description: Master customer table with demographic data
+    columns:
+      - name: customer_id
+        description: Unique customer identifier
+        tests:
+          - unique
+          - not_null
+      - name: customer_name
+        description: Legal customer name
+        tests:
+          - not_null
+      - name: industry
+        description: Industry classification
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: country
+        description: ISO country code
+        tests:
+          - not_null
+      - name: region
+        description: US state code
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "(country = 'US' AND region IS NOT NULL) OR (country != 'US')"
+              config:
+                severity: warn
+      - name: batch_date
+        description: ETL processing date
+        tests:
+          - not_null
+      - name: ingestion_ts
+        description: Timestamp of data ingestion
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: |
+            (SELECT COUNT(DISTINCT customer_id) FROM {{ this }}) = 
+            (SELECT COUNT(*) FROM {{ this }})
+          config:
+            severity: error
+            name: "no_duplicate_customers"
+      - dbt_utils.expression_is_true:
+          expression: |
+            NOT EXISTS (
+              SELECT customer_id 
+              FROM {{ ref('tbl_loan') }} l
+              WHERE NOT EXISTS (
+                SELECT 1 FROM {{ this }} c 
+                WHERE c.customer_id = l.customer_id
+              )
+            )
+          config:
+            severity: error
+            name: "all_loan_customers_exist"
+
+  - name: tbl_account_loan
+    description: Explicit many-to-many relationship between accounts and loans
+    columns:
+      - name: account_id
+        description: Account identifier
+        tests:
+          - not_null
+          - relationships:
+              to: ref('tbl_account')
+              field: account_id
+              config:
+                severity: error
+      - name: loan_id
+        description: Loan identifier
+        tests:
+          - not_null
+          - relationships:
+              to: ref('tbl_loan')
+              field: loan_id
+              config:
+                severity: error
+      - name: origination_date
+        description: Loan start date
+        tests:
+          - not_null
+      - name: loan_product
+        description: Product type
+        tests:
+          - not_null
+      - name: exposure_amount
+        description: Exposure on this loan
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "exposure_amount > 0"
+              config:
+                severity: error
+      - name: batch_date
+        description: ETL processing date
+        tests:
+          - not_null
+      - name: ingestion_ts
+        description: Timestamp of data ingestion
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: |
+            (SELECT COUNT(*) FROM {{ ref('tbl_loan') }}) = 
+            (SELECT COUNT(*) FROM {{ this }})
+          config:
+            severity: error
+            name: "all_loans_present_in_relationship"
+      - dbt_utils.expression_is_true:
+          expression: |
+            NOT EXISTS (
+              SELECT al.account_id, al.loan_id, al.exposure_amount, l.exposure_amount as loan_exposure
+              FROM {{ this }} al
+              JOIN {{ ref('tbl_loan') }} l ON al.loan_id = l.loan_id
+              WHERE al.exposure_amount != l.exposure_amount
+            )
+          config:
+            severity: error
+            name: "exposure_amount_matches_loan"
+
+  - name: monthly_loan_sales
+    description: Analytics view aggregating loan exposure by region, industry, and product
+    columns:
+      - name: origination_month
+        description: Month of loan origination
+        tests:
+          - not_null
+      - name: us_region
+        description: US state
+        tests:
+          - not_null
+      - name: industry
+        description: Customer industry
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: loan_product
+        description: Product type
+        tests:
+          - not_null
+      - name: loan_count
+        description: Number of loans
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "loan_count > 0"
+              config:
+                severity: error
+      - name: total_exposure
+        description: Sum of exposure
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "total_exposure > 0"
+              config:
+                severity: error
+      - name: avg_exposure
+        description: Average loan size
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "avg_exposure > 0"
+              config:
+                severity: error
+      - name: unique_customers
+        description: Distinct customers
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "unique_customers > 0"
+              config:
+                severity: error
+      - name: batch_date
+        description: ETL processing date
+        tests:
+          - not_null
+      - name: ingestion_ts
+        description: Timestamp of data ingestion
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.expression_is_true:
+          expression: |
+            NOT EXISTS (
+              SELECT 1 FROM {{ this }}
+              WHERE us_region IS NULL
+            )
+          config:
+            severity: error
+            name: "only_us_customers"
+      - dbt_utils.expression_is_true:
+          expression: |
+            (SELECT SUM(loan_count) FROM {{ this }}) = 
+            (SELECT COUNT(DISTINCT loan_id) FROM {{ ref('tbl_loan') }} l
+             JOIN {{ ref('tbl_customer') }} c ON l.customer_id = c.customer_id
+             WHERE c.country = 'US')
+          config:
+            severity: error
+            name: "loan_count_aggregation_check"
+      - dbt_utils.expression_is_true:
+          expression: |
+            (SELECT SUM(total_exposure) FROM {{ this }}) = 
+            (SELECT SUM(exposure_amount) FROM {{ ref('tbl_loan') }} l
+             JOIN {{ ref('tbl_customer') }} c ON l.customer_id = c.customer_id
+             WHERE c.country = 'US')
+          config:
+            severity: error
+            name: "total_exposure_aggregation_check"
+

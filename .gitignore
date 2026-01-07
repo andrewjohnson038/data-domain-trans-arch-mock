@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# dbt
+target/
+dbt_packages/
+profiles.yml
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# Project specific
+guide.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logging/*.log
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Airflow
+airflow/logs/
+airflow/airflow.db
+
+# Snowflake
+*.snowflake
+

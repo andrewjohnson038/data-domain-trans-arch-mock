@@ -1,0 +1,11 @@
+origination_month,us_region,industry,loan_product,loan_count,total_exposure,avg_exposure,unique_customers
+2025-01-01,NY,Logistics,TERM_LOAN,1,50000,50000.00,1
+2025-01-01,NY,Logistics,REVOLVER,1,10000,10000.00,1
+2025-01-01,TX,Retail,TERM_LOAN,1,75000,75000.00,1
+2025-01-01,TX,Energy,TERM_LOAN,1,200000,200000.00,1
+2025-01-01,PA,Manufacturing,REVOLVER,2,145000,72500.00,1
+2025-01-01,CA,Technology,TERM_LOAN,1,120000,120000.00,1
+2025-01-01,FL,Healthcare,TERM_LOAN,1,85000,85000.00,1
+2025-01-01,NY,Construction,REVOLVER,1,75000,75000.00,1
+2025-01-01,IL,Logistics,REVOLVER,1,40000,40000.00,1
+
