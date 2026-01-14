@@ -13,5 +13,5 @@ select
     batch_date,
     ingestion_ts
 from {{ ref('customer_demographics') }}
-qualify row_number() over (partition by customer_id order by batch_date desc) = 1
+qualify row_number() over (partition by customer_id order by batch_date desc) = 1  # pull only most recent record per customer
 

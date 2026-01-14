@@ -7,8 +7,6 @@
 with sys_a_loans as (
     select
         loan_id,
-        account_id,
-        customer_id,
         origination_date,
         loan_product,
         loan_amount as exposure_amount,
@@ -22,8 +20,6 @@ with sys_a_loans as (
 sys_b_loans as (
     select
         loan_id,
-        account_id,
-        customer_id,
         origination_date,
         loan_product,
         utilized_amount as exposure_amount,
