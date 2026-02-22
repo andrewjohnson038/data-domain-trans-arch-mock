@@ -32,6 +32,55 @@ Both systems store data differently, use different field names, and have differe
 
 The end result: Business analysts can query a single, unified view of all loans regardless of which system they came from.
 
+**There will be two flows** 
+- one for **testing:** (uses duckdb to write tables temporarely than to csvs in the repo). This is to showcase the workflow without needing a SnowFlake Instance.
+- one for **prod:** this is to simulate a true workflow. This would need additional customized set up if this repo is forked by the user. Would require AWS S3 & Snowflake set-up.
+
+from {{ ref('sys_a_loan_trans') }}
+```
+
+```
+TEST MODE:
+┌─────────────────┐
+│ seeds/          │
+│ - sys_a.csv     │               ┌──────────────┐
+│ - sys_b.csv     │──dbt seed──>  │  DuckDB      │
+└─────────────────┘               │  (temp)      │
+                                  └──────────────┘
+                      
+┌─────────────────────┼─────────────────────┐
+│                     │                     │
+▼                     ▼                     ▼
+┌──────────────┐      ┌──────────────┐    ┌──────────────┐
+│ Structured   │      │  Curated     │    │   Views      │
+│ (DuckDB)     │─────>│  (DuckDB)    │───>│  (DuckDB)    │
+└──────────────┘      └──────────────┘    └──────────────┘
+      │
+      ▼
+┌──────────────┐
+│ Export CSVs  │
+│ test_results/│
+└──────────────┘
+
+PROD MODE:
+┌─────────────────┐
+│ S3 Bucket       │
+│ - sys_a.csv     │ ──Snowflake──>  ┌──────────────┐
+│ - sys_b.csv     │    Stage        │  Snowflake   │
+└─────────────────┘                 │              │
+                                    └──────────────┘
+                       │
+┌──────────────────────┼──────────────────────┐
+│                      │                      │
+▼                      ▼                      ▼
+┌──────────────┐       ┌──────────────┐     ┌──────────────┐
+│ Structured   │       │  Curated     │     │   Views      │
+│ (Snowflake)  │──────>│  (Snowflake) │────>│  (Snowflake) │
+└──────────────┘       └──────────────┘     └──────────────┘
+│
+▼
+(Data stays in Snowflake)
+
 ### The Challenge
 
 When you have multiple source systems, you face several problems:
@@ -360,6 +409,30 @@ dbt run --select views
 # Run data quality tests
 dbt test
 ```
+
+### Setting Up Airflow
+
+####  to initialize airflow:
+```bash
+     Step 1: Initialize the database
+     bash airflow db init
+     Step 2: Create an admin user (needed to log into the UI)
+     bash airflow users create \
+                       --username admin \
+                                  --password admin \
+                                             --firstname Admin \
+                                                         --lastname User \
+                                                                    --role Admin \
+                                                                           --email admin@example.com
+     Step 3: Start the scheduler (in one terminal tab)
+     bash airflow scheduler
+     Step 4: Start the webserver (in a new terminal tab)
+     bash airflow api-server --port 8080
+     Step 5: Open the UI
+     Go to http://localhost:8080 in your browser and log in with admin / admin.
+```
+- Note: If you see a 500 error in Airflow, You will need to copy the dags in the repo to your global dag folder in order to run. All dags run from a global airflow folder at set up (/Users/xxxx/airflow/dags)
+- Note: Also make sure in your airflow.cfg file, the dags_folder = is set to the right path. You may have a global files folder set up already. It will not orchestrate in airflow correctly if you fork this repo and don't set to the dbt folder in the repo path.
 
 ### Example Data
 

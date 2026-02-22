@@ -1,4 +1,3 @@
-# not being used but an example
 
 {% macro merge_upsert(target_table, source_query, unique_key, update_columns) %}
 
