@@ -1,4 +1,4 @@
-cust_code, company_name, sector, nation, st
+cust_code,company_name,sector,nation,st
 CUST-001, Acme Corp, Logistics, US, NY
 CUST-002, Bright Retail, Retail, US, TX
 CUST-003, SteelWorks Inc, Manufacturing, US, PA

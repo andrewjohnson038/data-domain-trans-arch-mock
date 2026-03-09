@@ -1,5 +1,6 @@
 #############################################################
 # ------ RUN TEST DAGS (run test csv's in repo) ---------- #
+# loan_data_pipeline_dag_test.py
 #############################################################
 
 import os
@@ -8,6 +9,7 @@ from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from dotenv import find_dotenv, load_dotenv
+import traceback
 
 # Paths
 LOG_DIR = os.path.join(os.getcwd(), "logging_test")
@@ -19,7 +21,7 @@ load_dotenv(find_dotenv())
 BASE_DIR = os.environ.get('DBT_PROJECT_DIR')
 
 DBT_DIR = os.path.join(BASE_DIR, 'dbt')  # dbt project folder
-BASE_OUTPUT_DIR = os.path.join(BASE_DIR, '../../example_data')  # output folder for CSV exports
+BASE_OUTPUT_DIR = os.path.join(BASE_DIR, '../example_data')  # output folder for CSV exports
 DUCKDB_PATH = os.path.join(BASE_OUTPUT_DIR, 'test.duckdb')  # temporary DuckDB file
 
 default_args = {
@@ -41,22 +43,55 @@ dag = DAG(
 )
 
 
+# log start of pipeline
 def log_pipeline_start(**context):
     os.makedirs(LOG_DIR, exist_ok=True)
     with open(SUCCESS_LOG, 'a') as f:
         f.write(f"{datetime.now()} - Pipeline TEST started for batch_date: {context['ds']}\n")
 
 
+# add dependencies
+dbt_deps = BashOperator(
+    task_id='dbt_deps',
+    bash_command=f'dbt deps --project-dir {DBT_DIR} --profiles-dir {DBT_DIR}',
+    dag=dag,
+)
+
+
+# lists all successful tasks and the task that caused to fail if so to the logging_test folder. Will log as all success if all successful
 def log_pipeline_success(**context):
     os.makedirs(LOG_DIR, exist_ok=True)
-    with open(SUCCESS_LOG, 'a') as f:
-        f.write(f"{datetime.now()} - Pipeline TEST completed successfully for batch_date: {context['ds']}\n")
+
+    with open(SUCCESS_LOG, "a") as f:
+        f.write(
+            f"{datetime.now()} - Pipeline TEST completed for batch_date: {context['ds']}\n"
+        )
+        f.write("All tasks completed successfully.\n\n")
 
 
+# logs failed task and what caused it to the logging_test folder in failure.log
 def log_pipeline_failure(**context):
     os.makedirs(LOG_DIR, exist_ok=True)
-    with open(FAILURE_LOG, 'a') as f:
-        f.write(f"{datetime.now()} - Pipeline TEST failed for batch_date: {context['ds']}\n")
+
+    ti = context.get("ti")  # Airflow 3 uses "ti" not "task_instance"
+    exception = context.get("exception")
+
+    with open(FAILURE_LOG, "a") as f:
+        f.write(
+            f"{datetime.now()} - Pipeline TEST failed for batch_date: {context.get('ds', 'unknown')}\n"
+        )
+
+        if ti:
+            f.write(f"DAG: {ti.dag_id} | Task: {ti.task_id}\n")
+
+        if exception:
+            f.write(f"Error: {str(exception)}\n")
+            f.write("Traceback:\n")
+            f.write("".join(traceback.format_exception(type(exception), exception, exception.__traceback__)))
+        else:
+            f.write("No exception details available.\n")
+
+        f.write("\n")
 
 
 def export_results_to_csv(**context):
@@ -141,41 +176,41 @@ log_start = PythonOperator(
 # Task: Load seed data (test CSVs) into DuckDB
 dbt_seed = BashOperator(
     task_id='dbt_seed',
-    bash_command=f'dbt seed --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
+    bash_command=f'dbt seed --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test --no-partial-parse',
     dag=dag,
 )
 # Task: Run structured layer models
 dbt_run_structured = BashOperator(
     task_id='dbt_run_structured',
-    bash_command=f'dbt run --select structured --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
+    bash_command=f'dbt run --select structured --no-partial-parse --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
     dag=dag,
 )
 
 # Task: Test structured layer
 dbt_test_structured = BashOperator(
     task_id='dbt_test_structured',
-    bash_command=f'dbt test --select structured --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
+    bash_command=f'dbt test --select structured --no-partial-parse --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
     dag=dag,
 )
 
 # Task: Run curated layer models
 dbt_run_curated = BashOperator(
     task_id='dbt_run_curated',
-    bash_command=f'dbt run --select curated --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
+    bash_command=f'dbt run --select curated --no-partial-parse --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
     dag=dag,
 )
 
 # Task: Test curated layer
 dbt_test_curated = BashOperator(
     task_id='dbt_test_curated',
-    bash_command=f'dbt test --select curated --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
+    bash_command=f'dbt test --select curated --no-partial-parse --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
     dag=dag,
 )
 
 # Task: Run views layer
 dbt_run_views = BashOperator(
     task_id='dbt_run_views',
-    bash_command=f'dbt run --select views --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
+    bash_command=f'dbt run --select views --no-partial-parse --project-dir {DBT_DIR} --profiles-dir {DBT_DIR} --target test',
     dag=dag,
 )
 
@@ -211,7 +246,7 @@ log_failure = PythonOperator(
 )
 
 # ---------- Task dependencies for TEST DAG ----------
-log_start >> dbt_seed >> dbt_run_structured >> dbt_test_structured >> dbt_run_curated >> dbt_test_curated >> dbt_run_views >> export_csv >> cleanup >> log_success
+log_start >> dbt_deps >> dbt_seed >> dbt_run_structured >> dbt_test_structured >> dbt_run_curated >> dbt_test_curated >> dbt_run_views >> export_csv >> cleanup >> log_success
 
 [dbt_seed, dbt_run_structured, dbt_test_structured, dbt_run_curated, dbt_test_curated, dbt_run_views, export_csv] >> log_failure
 cleanup >> log_failure

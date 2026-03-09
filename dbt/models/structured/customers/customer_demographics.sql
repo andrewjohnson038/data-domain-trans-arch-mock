@@ -15,7 +15,7 @@
         sector as customer_industry,
         nation as customer_country_name,
         st as customer_state_cd,
-        current_timestamp() as ingestion_ts  -- DuckDB syntax (no parentheses)
+        current_localtimestamp() as ingestion_ts  -- DuckDB syntax (no parentheses)
     from {{ ref('customers') }}  -- References dbt/seeds/customers.csv
 
 {% else %}

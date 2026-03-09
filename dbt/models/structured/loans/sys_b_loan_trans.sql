@@ -11,15 +11,15 @@ WITH source_data AS (
 -- TEST MODE: Read from seed CSV - change target name if using prod
 select
     facility_id as loan_id,
-    borrower_account_id as account_id,
-    borrower_id as customer_id,
-    start_date as origination_date,
+    acct_id as account_id,
+    customer_id,
+    open_date as origination_date,
     product_type as loan_product,
-    facility_amount as loan_amount,
+    credit_limit as loan_amount,
     null as interest_rate,
     null as term_months,
     cast('{{ var("batch_date") }}' as date) as batch_date,
-    current_timestamp() as ingestion_ts
+    current_localtimestamp() as ingestion_ts  -- duck db syntax
 from {{ ref('lender_facilities_2025_01') }}
 
 {% else %}
@@ -35,7 +35,7 @@ select
     null as interest_rate,
     null as term_months,
     cast('{{ var("batch_date") }}' as date) as batch_date,
-    current_timestamp() as ingestion_ts
+    current_timestamp() as ingestion_ts  -- snowflake syntax
 from {{ source('raw_s3', 'loan_sys_b_facilities') }}
 
 {% endif %}

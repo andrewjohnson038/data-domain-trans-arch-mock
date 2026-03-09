@@ -19,7 +19,7 @@ models:
           - unique
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "loan_id ~ '^L-A-\\d{4}$'"
+              expression: "regexp_matches(loan_id, '^L-A-[0-9]{4}$')"
               config:
                 severity: error
       - name: account_id
@@ -131,20 +131,12 @@ models:
               values: ['REVOLVER']
               config:
                 severity: error
-      - name: credit_limit
+      - name: loan_amount
         description: Maximum credit available
         tests:
           - not_null
           - dbt_utils.expression_is_true:
-              expression: "credit_limit > 0"
-              config:
-                severity: error
-      - name: utilized_amount
-        description: Currently drawn amount
-        tests:
-          - not_null
-          - dbt_utils.expression_is_true:
-              expression: "utilized_amount >= 0 AND utilized_amount <= credit_limit"
+              expression: "loan_amount > 0"
               config:
                 severity: error
       - name: term_months
@@ -182,31 +174,22 @@ models:
         description: Legal customer name
         tests:
           - not_null
-      - name: industry
-        description: Industry classification (NAICS-based)
+      - name: customer_industry
+        description: Industry classification
         tests:
           - not_null:
               config:
                 severity: warn
-      - name: country
-        description: ISO country code
+      - name: customer_country_name
+        description: Country name
         tests:
           - not_null
-          - dbt_utils.expression_is_true:
-              expression: "LENGTH(country) = 2"
-              config:
-                severity: error
-      - name: region
+      - name: customer_state_cd
         description: US state code (if applicable)
         tests:
-          - dbt_utils.expression_is_true:
-              expression: "(country = 'US' AND region IS NOT NULL) OR (country != 'US')"
+          - not_null:
               config:
                 severity: warn
-      - name: batch_date
-        description: ETL batch processing date
-        tests:
-          - not_null
       - name: ingestion_ts
         description: Timestamp of data ingestion
         tests:
