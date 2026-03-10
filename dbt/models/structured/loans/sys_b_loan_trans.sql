@@ -16,9 +16,10 @@ select
     open_date as origination_date,
     product_type as loan_product,
     credit_limit as loan_amount,
+    utilized_amount,
     null as interest_rate,
     null as term_months,
-    cast('{{ var("batch_date") }}' as date) as batch_date,
+    cast(current_date as date) as batch_date,
     current_localtimestamp() as ingestion_ts  -- duck db syntax
 from {{ ref('lender_facilities_2025_01') }}
 
@@ -32,9 +33,10 @@ select
     open_date as origination_date,
     product_type as loan_product,
     credit_limit as loan_amount,
+    utilized_amount,
     null as interest_rate,
     null as term_months,
-    cast('{{ var("batch_date") }}' as date) as batch_date,
+    cast(current_date as date) as batch_date,
     current_timestamp() as ingestion_ts  -- snowflake syntax
 from {{ source('raw_s3', 'loan_sys_b_facilities') }}
 

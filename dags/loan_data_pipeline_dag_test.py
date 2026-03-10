@@ -97,59 +97,63 @@ def log_pipeline_failure(**context):
 def export_results_to_csv(**context):
     """Export test results from DuckDB to CSV files in layer-specific folders"""
     import duckdb
+    from dotenv import find_dotenv, load_dotenv
 
-    os.makedirs(f"{BASE_OUTPUT_DIR}/structured_layer", exist_ok=True)
-    os.makedirs(f"{BASE_OUTPUT_DIR}/curated_layer", exist_ok=True)
-    os.makedirs(f"{BASE_OUTPUT_DIR}/view_layer", exist_ok=True)
+    # Reload env vars at task execution time
+    load_dotenv(find_dotenv())
+
+    # Derive path relative to DAG file location
+    dag_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.environ.get('DBT_PROJECT_DIR') or os.path.dirname(dag_dir)
+    base_output_dir = os.path.join(base_dir, 'example_data')
+    duckdb_path = os.path.join(base_output_dir, 'test.duckdb')
+
+    os.makedirs(f"{base_output_dir}/structured_layer", exist_ok=True)
+    os.makedirs(f"{base_output_dir}/curated_layer", exist_ok=True)
+    os.makedirs(f"{base_output_dir}/view_layer", exist_ok=True)
 
     try:
-        conn = duckdb.connect(DUCKDB_PATH, read_only=True)
+        conn = duckdb.connect(duckdb_path, read_only=True)
 
         layer_mapping = {
             'structured_layer': [
-                'customer_demographics',
-                'sys_a_loan_trans',
-                'sys_b_loan_trans',
-                'country_ref',
-                'country_state_ref'
+                'main_structured_zone.customer_demographics',
+                'main_structured_zone.sys_a_loan_trans',
+                'main_structured_zone.sys_b_loan_trans',
+                'main_structured_zone.country_ref',
+                'main_structured_zone.country_state_ref'
             ],
             'curated_layer': [
-                'tbl_account',
-                'tbl_account_loan',
-                'tbl_customer',
-                'tbl_loan'
+                'main_curated_zone.tbl_account',
+                'main_curated_zone.tbl_account_loan',
+                'main_curated_zone.tbl_customer',
+                'main_curated_zone.tbl_loan'
             ],
             'view_layer': [
-                'monthly_loan_sales'
+                'main_curated_zone.monthly_loan_sales'
             ]
         }
 
         exported_count = 0
 
         for layer_folder, table_list in layer_mapping.items():
-            layer_path = f"{BASE_OUTPUT_DIR}/{layer_folder}"
+            layer_path = f"{base_output_dir}/{layer_folder}"
 
             for table_name in table_list:
                 try:
-                    table_exists = conn.execute(
-                        f"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '{table_name}'"
-                    ).fetchone()[0]
+                    short_name = table_name.split('.')[-1]
+                    csv_path = f"{layer_path}/{short_name}.csv"
+                    conn.execute(f"COPY {table_name} TO '{csv_path}' (HEADER, DELIMITER ',')")
 
-                    if table_exists > 0:
-                        csv_path = f"{layer_path}/{table_name}.csv"
-                        conn.execute(f"COPY {table_name} TO '{csv_path}' (HEADER, DELIMITER ',')")
-
-                        row_count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
-                        print(f"✅ Exported {table_name} ({row_count} rows) to {csv_path}")
-                        exported_count += 1
-                    else:
-                        print(f"⚠️  Table {table_name} not found in DuckDB, skipping...")
+                    row_count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+                    print(f"✅ Exported {short_name} ({row_count} rows) to {csv_path}")
+                    exported_count += 1
 
                 except Exception as e:
                     print(f"⚠️  Warning: Could not export {table_name}: {e}")
 
         conn.close()
-        print(f"\n📊 Successfully exported {exported_count} tables to {BASE_OUTPUT_DIR}")
+        print(f"\n✅ Successfully exported {exported_count} tables to {base_output_dir}")
 
     except Exception as e:
         print(f"❌ Error during export: {e}")
@@ -246,7 +250,6 @@ log_failure = PythonOperator(
 )
 
 # ---------- Task dependencies for TEST DAG ----------
-log_start >> dbt_deps >> dbt_seed >> dbt_run_structured >> dbt_test_structured >> dbt_run_curated >> dbt_test_curated >> dbt_run_views >> export_csv >> cleanup >> log_success
+log_start >> cleanup >> dbt_seed >> dbt_run_structured >> dbt_test_structured >> dbt_run_curated >> dbt_test_curated >> dbt_run_views >> export_csv >> log_success
 
 [dbt_seed, dbt_run_structured, dbt_test_structured, dbt_run_curated, dbt_test_curated, dbt_run_views, export_csv] >> log_failure
-cleanup >> log_failure

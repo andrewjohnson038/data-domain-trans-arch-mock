@@ -10,6 +10,7 @@ with sys_a_loans as (
         origination_date,
         loan_product,
         loan_amount as exposure_amount,
+        null as utilized_amount,
         interest_rate,
         term_months,
         batch_date,
@@ -22,7 +23,8 @@ sys_b_loans as (
         loan_id,
         origination_date,
         loan_product,
-        utilized_amount as exposure_amount,
+        loan_amount as exposure_amount,
+        utilized_amount,
         null as interest_rate,
         null as term_months,
         batch_date,
@@ -33,4 +35,3 @@ sys_b_loans as (
 select * from sys_a_loans
 union all
 select * from sys_b_loans
-

@@ -13,7 +13,7 @@
         cust_code as customer_id,
         company_name as customer_name,
         sector as customer_industry,
-        nation as customer_country_name,
+        nation as customer_country_cd,
         st as customer_state_cd,
         current_localtimestamp() as ingestion_ts  -- DuckDB syntax (no parentheses)
     from {{ ref('customers') }}  -- References dbt/seeds/customers.csv
@@ -24,7 +24,7 @@
         cust_code as customer_id,
         company_name as customer_name,
         sector as customer_industry,
-        nation as customer_country_name,
+        nation as customer_country_cd,
         st as customer_state_cd,
         current_timestamp() as ingestion_ts  -- Snowflake syntax
     from {{ source('raw_s3', 'customer_demographics_daily') }}

@@ -18,7 +18,7 @@ select
     loan_amount,
     interest_rate,
     term_months,
-    cast('{{ var("batch_date") }}' as date) as batch_date,
+    cast(current_date as date) as batch_date,
     current_localtimestamp() as ingestion_ts  -- duckdb syntax
 from {{ ref('credit_loans_2025_01') }}
 
@@ -34,7 +34,7 @@ select
     loan_amount,
     interest_rate,
     term_months,
-    cast('{{ var("batch_date") }}' as date) as batch_date,
+    cast(current_date as date) as batch_date,
     current_timestamp() as ingestion_ts  -- snowflake syntax
 from {{ source('raw_s3', 'loan_sys_a_transactions') }}
 
